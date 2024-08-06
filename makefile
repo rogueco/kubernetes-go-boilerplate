@@ -586,3 +586,20 @@ admin-gui-start-build: admin-gui-build
 	pnpm -C ${ADMIN_FRONTEND_PREFIX} run preview
 
 admin-gui-run: write-token-to-env admin-gui-start-build
+
+
+
+# ==============================================================================
+# Production
+prod-setup-infra:
+	terraform -chdir=ops/aws init
+	terraform -chdir=ops/aws apply
+
+prod-set-kubeconfig:
+	aws eks --region $(shell terraform -chdir=ops/aws output -raw region) update-kubeconfig \
+		--name $(shell terraform -chdir=ops/aws output -raw cluster_name)
+
+prod-docker-login:
+	@for repo in $(shell terraform -chdir=ops/aws output -json repository_url | jq -r 'to_entries[] | .value'); do \
+		aws ecr get-login-password --region $(shell terraform -chdir=ops/aws output -raw region) | docker login --username AWS --password-stdin $$repo; \
+	done
