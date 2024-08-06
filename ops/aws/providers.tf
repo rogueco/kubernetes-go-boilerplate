@@ -18,12 +18,12 @@ terraform {
     }
   }
 
-#  backend "s3" {
-#    bucket  = "optiop-ar-terraform-state"
-#    key     = "optiop/cluster"
-#    region  = "eu-central-1"
-#    encrypt = true
-#  }
+  backend "s3" {
+    bucket  = "optiop-terraform-state"
+    key     = "optiop/kubernetes-go-boilerplate"
+    region  = "eu-central-1"
+    encrypt = true
+  }
 }
 
 provider "kubernetes" {
