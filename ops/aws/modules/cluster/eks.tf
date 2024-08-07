@@ -74,9 +74,75 @@ module "eks" {
   }
 }
 
+resource "aws_eks_addon" "ebs-csi" {
+  cluster_name             = module.eks.cluster_name
+  addon_name               = "aws-ebs-csi-driver"
+  addon_version            = "v1.33.0-eksbuild.1"
+  service_account_role_arn = module.irsa-ebs-csi.iam_role_arn
+  tags = {
+    "eks_addon" = "ebs-csi"
+    "terraform" = "true"
+  }
+}
+
+resource "aws_eks_addon" "efs-csi" {
+  cluster_name             = module.eks.cluster_name
+  addon_name               = "aws-efs-csi-driver"
+  addon_version            = "v2.0.6-eksbuild.1"
+  service_account_role_arn = module.irsa-efs-csi.iam_role_arn
+  tags = {
+    "eks_addon" = "efs-csi"
+    "terraform" = "true"
+  }
+}
+
 # https://aws.amazon.com/blogs/containers/amazon-ebs-csi-driver-is-now-generally-available-in-amazon-eks-add-ons/
 data "aws_iam_policy" "ebs_csi_policy" {
   arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
+}
+
+data "aws_iam_policy" "efs_csi_policy" {
+  arn = "arn:aws:iam::aws:policy/service-role/AmazonEFSCSIDriverPolicy"
+}
+
+module "efs" {
+  source  = "terraform-aws-modules/efs/aws"
+  version = "1.4.0"
+
+  name            = format("%s-efs", var.cluster_name)
+  security_group_rules = {
+    description = "NFS ingress from VPC private subnets"
+    cidr_blocks = module.vpc.private_subnets_cidr_blocks
+  }
+}
+
+resource "aws_efs_file_system_policy" "efs_policy" {
+  file_system_id = module.efs.id
+  policy         = jsonencode({
+    "Version" : "2012-10-17",
+    "Statement" : [
+      {
+        "Effect" : "Allow",
+        "Principal" : "*",
+        "Action" : [
+          "elasticfilesystem:ClientMount",
+          "elasticfilesystem:ClientWrite"
+        ],
+        "Resource" : "*"
+      }
+    ]
+  })
+}
+
+module "irsa-efs-csi" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-role-with-oidc"
+  version = "5.43.0"
+
+  create_role                   = true
+  role_name                     = "AmazonEKSTFEFSCSIRole-${module.eks.cluster_name}"
+  provider_url                  = module.eks.oidc_provider
+  role_policy_arns              = [data.aws_iam_policy.efs_csi_policy.arn]
+  oidc_fully_qualified_subjects = ["system:serviceaccount:kube-system:efs-csi-controller-sa"]
 }
 
 module "irsa-ebs-csi" {
@@ -92,6 +158,7 @@ module "irsa-ebs-csi" {
 
 module "lb_role" {
   source = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
+  version = "5.43.0"
 
   role_name                              = format("%s-lb-role", var.cluster_name)
   attach_load_balancer_controller_policy = true
