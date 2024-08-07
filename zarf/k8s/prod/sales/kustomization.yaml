@@ -9,7 +9,7 @@ patches:
 images:
   - name: sales-image
     newName: 615677714887.dkr.ecr.eu-central-1.amazonaws.com/ardanlabs-sales
-    newTag: 0.0.1
+    newTag: latest
   - name: metrics-image
     newName: 615677714887.dkr.ecr.eu-central-1.amazonaws.com/ardanlabs-metrics
-    newTag: 0.0.1
+    newTag: latest
