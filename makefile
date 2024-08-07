@@ -169,6 +169,12 @@ help:
 	@echo "  dev-logs-loki           Show the logs for the loki service"
 	@echo "  dev-logs-promtail       Show the logs for the promtail service"
 	@echo "  dev-services-delete     Delete all"
+	@echo "  prod-setup-infra        Setup the AWS infrastructure"
+	@echo "  prod-set-kubeconfig     Set the kubeconfig for the AWS cluster"
+	@echo "  prod-docker-login       Login to the AWS ECR"
+	@echo "  prod-push-images        Push the images to the AWS ECR"
+	@echo "  prod-apply              Apply the manifests to the AWS cluster"
+	@echo "  prod-services-delete    Delete all"
 
 # ==============================================================================
 # Install dependencies
@@ -603,3 +609,37 @@ prod-docker-login:
 	@for repo in $(shell terraform -chdir=ops/aws output -json repository_url | jq -r 'to_entries[] | .value'); do \
 		aws ecr get-login-password --region $(shell terraform -chdir=ops/aws output -raw region) | docker login --username AWS --password-stdin $$repo; \
 	done
+
+prod-push-images:
+	docker tag $(SALES_IMAGE) $(shell terraform -chdir=ops/aws output -json repository_url | jq -r '.["ardanlabs-sales"]')
+	docker push $(shell terraform -chdir=ops/aws output -json repository_url | jq -r '.["ardanlabs-sales"]')
+
+	docker tag $(METRICS_IMAGE) $(shell terraform -chdir=ops/aws output -json repository_url | jq -r '.["ardanlabs-metrics"]')
+	docker push $(shell terraform -chdir=ops/aws output -json repository_url | jq -r '.["ardanlabs-metrics"]')
+
+	docker tag $(AUTH_IMAGE) $(shell terraform -chdir=ops/aws output -json repository_url | jq -r '.["ardanlabs-auth"]')
+	docker push $(shell terraform -chdir=ops/aws output -json repository_url | jq -r '.["ardanlabs-auth"]')
+
+prod-apply:
+	kustomize build zarf/k8s/prod/grafana | kubectl apply -f -
+	kustomize build zarf/k8s/prod/prometheus | kubectl apply -f -
+	kustomize build zarf/k8s/prod/tempo | kubectl apply -f -
+	kustomize build zarf/k8s/prod/loki | kubectl apply -f -
+	kustomize build zarf/k8s/prod/promtail | kubectl apply -f -
+
+	kustomize build zarf/k8s/prod/database | kubectl apply -f -
+	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s sts/database
+
+	kustomize build zarf/k8s/prod/auth | kubectl apply -f -
+	kubectl wait pods --namespace=$(NAMESPACE) --selector app=$(AUTH_APP) --timeout=120s --for=condition=Ready
+
+	kustomize build zarf/k8s/prod/sales | kubectl apply -f -
+	kubectl wait pods --namespace=$(NAMESPACE) --selector app=$(SALES_APP) --timeout=120s --for=condition=Ready
+
+prod-services-delete:
+	kustomize build zarf/k8s/prod/sales | kubectl delete -f -
+	kustomize build zarf/k8s/prod/grafana | kubectl delete -f -
+	kustomize build zarf/k8s/prod/tempo | kubectl delete -f -
+	kustomize build zarf/k8s/prod/loki | kubectl delete -f -
+	kustomize build zarf/k8s/prod/promtail | kubectl delete -f -
+	kustomize build zarf/k8s/prod/database | kubectl delete -f -
