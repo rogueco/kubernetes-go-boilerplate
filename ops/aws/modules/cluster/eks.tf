@@ -164,7 +164,7 @@ resource "aws_security_group" "efs_sg" {
 }
 
 resource "aws_efs_mount_target" "efs-mount-target" {
-  for_each = toset(module.vpc.private_subnets)
+  for_each = {for idx, subnet in module.vpc.private_subnets : idx => subnet}
   file_system_id = module.efs.id
   subnet_id      = each.value
   security_groups = [aws_security_group.efs_sg.id]
