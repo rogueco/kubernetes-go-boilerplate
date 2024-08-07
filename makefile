@@ -175,6 +175,8 @@ help:
 	@echo "  prod-push-images        Push the images to the AWS ECR"
 	@echo "  prod-apply              Apply the manifests to the AWS cluster"
 	@echo "  prod-services-delete    Delete all"
+	@echo "  prod-token              Get a token for the AWS cluster"
+	@echo "  prod-destroy            Destroy the AWS infrastructure"
 
 # ==============================================================================
 # Install dependencies
@@ -643,3 +645,11 @@ prod-services-delete:
 	kustomize build zarf/k8s/prod/loki | kubectl delete -f -
 	kustomize build zarf/k8s/prod/promtail | kubectl delete -f -
 	kustomize build zarf/k8s/prod/database | kubectl delete -f -
+
+
+prod-token:
+	curl -il \
+	--user "admin@example.com:gophers" a955dc7adf93b45acabbeb7982075bca-1474138980.eu-central-1.elb.amazonaws.com:6000
+
+prod-destroy:
+	terraform -chdir=ops/aws destroy
