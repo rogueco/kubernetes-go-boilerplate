@@ -47,6 +47,7 @@ module "eks" {
   subnet_ids                     = module.vpc.private_subnets
   cluster_endpoint_public_access = true
 
+
   eks_managed_node_group_defaults = {
     ami_type = "AL2_x86_64"
   }
@@ -59,7 +60,11 @@ module "eks" {
 
       min_size     = 1
       max_size     = 2
-      desired_size = 1
+      desired_size = 2
+
+      aws_iam_role_policy_attachment = {
+        policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+      }
     }
 
     secondary = {
@@ -69,7 +74,26 @@ module "eks" {
 
       min_size     = 1
       max_size     = 2
-      desired_size = 1
+      desired_size = 2
+
+      aws_iam_role_policy_attachment = {
+        policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+      }
+    }
+
+    tertiary = {
+      name = "node-group-1"
+
+      instance_types = ["t3.small"]
+
+      min_size     = 1
+      max_size     = 2
+      desired_size = 2
+
+      aws_iam_role_policy_attachment = {
+        policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+      }
+
     }
   }
 }
@@ -95,6 +119,8 @@ resource "aws_eks_addon" "efs-csi" {
     "terraform" = "true"
   }
 }
+
+
 
 # https://aws.amazon.com/blogs/containers/amazon-ebs-csi-driver-is-now-generally-available-in-amazon-eks-add-ons/
 data "aws_iam_policy" "ebs_csi_policy" {
