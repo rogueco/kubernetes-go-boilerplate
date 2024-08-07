@@ -110,10 +110,38 @@ module "efs" {
   version = "1.4.0"
 
   name            = format("%s-efs", var.cluster_name)
+
   security_group_rules = {
     description = "NFS ingress from VPC private subnets"
     cidr_blocks = module.vpc.private_subnets_cidr_blocks
   }
+}
+
+resource "aws_security_group" "efs_sg" {
+  name        = format("%s-efs-sg", var.cluster_name)
+  vpc_id      = module.vpc.vpc_id
+  description = "EFS security group"
+
+  ingress {
+    from_port   = 2049
+    to_port     = 2049
+    protocol    = "tcp"
+    cidr_blocks = module.vpc.private_subnets_cidr_blocks
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_efs_mount_target" "efs-mount-target" {
+  for_each = toset(module.vpc.private_subnets)
+  file_system_id = module.efs.id
+  subnet_id      = each.value
+  security_groups = [aws_security_group.efs_sg.id]
 }
 
 resource "aws_efs_file_system_policy" "efs_policy" {
