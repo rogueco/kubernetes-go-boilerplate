@@ -19,9 +19,9 @@ terraform {
   }
 
   backend "s3" {
-    bucket  = "optiop-terraform-state"
-    key     = "optiop/kubernetes-go-boilerplate"
-    region  = "eu-central-1"
+    bucket  = "rogueco-terraform-state"
+    key     = "rogueco/kubernetes-go-boilerplate"
+    region  = "eu-west-1"
     encrypt = true
   }
 }

@@ -2,7 +2,7 @@ module "repository" {
   source = "./modules/repository"
   region = var.region
   name   = "ardanlabs"
-  github_owner = "optiop"
+  github_owner = "rogueco"
   github_repo = "kubernetes-go-boilerplate"
   github_oidc_provider_arn = var.github_oidc_provider_arn
 }
